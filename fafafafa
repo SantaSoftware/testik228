@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gift Spinner</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 40px;
+    }
+
+    #spinnerWrapper {
+      position: relative;
+      width: 640px;
+      margin: auto;
+      overflow: hidden;
+      border: 2px solid orange;
+    }
+
+    #spinner {
+      display: flex;
+      justify-content: flex-start;
+      will-change: transform;
+      transition: transform 0s linear;
+    }
+
+    .item {
+      width: 80px;
+      height: 80px;
+      margin: 0 5px;
+      border: 3px solid;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+      background: #222;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .green { border-color: green; }
+    .blue { border-color: blue; }
+    .purple { border-color: purple; }
+    .red { border-color: red; }
+    .gold { border-color: gold; }
+
+    .item img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .highlight {
+      border-color: orange !important;
+      transform: scale(1.2);
+      box-shadow: 0 0 20px orange;
+      z-index: 2;
+    }
+
+    #spinBtn {
+      padding: 10px 20px;
+      font-size: 18px;
+      background: limegreen;
+      color: black;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 30px;
+    }
+
+    #spinBtn:disabled {
+      background: gray;
+      cursor: not-allowed;
+    }
+
+    #centerLine {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 4px;
+      background: orange;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gift Spinner</h1>
+  <div id="spinnerWrapper">
+    <div id="centerLine"></div>
+    <div id="spinner"></div>
+  </div>
+  <button id="spinBtn">Spin</button>
+
+  <script>
+    const itemTypes = {
+      green: { count: 5, weight: 50, img: "https://minecraftitemids.com/item/32/ender_pearl.png" },
+      blue: { count: 5, weight: 35, img: "https://minecraftitemids.com/item/32/lapis_lazuli.png" },
+      purple: { count: 5, weight: 10, img: "https://minecraftitemids.com/item/32/ender_eye.png" },
+      red: { count: 4, weight: 4, img: "https://minecraftitemids.com/item/32/redstone.png" },
+      gold: { count: 1, weight: 1, img: "https://minecraftitemids.com/item/32/command_block.png" },
+    };
+
+    const spinner = document.getElementById("spinner");
+    const spinBtn = document.getElementById("spinBtn");
+
+    let items = [];
+    let isSpinning = false;
+    let itemWidth = null; // 80px width + 2*5px margin
+    let visibleCount = 7;
+    let centerIndex = Math.floor(visibleCount / 2);
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function setupSpinner() {
+      spinner.innerHTML = "";
+      items = [];
+
+      for (const type in itemTypes) {
+        const data = itemTypes[type];
+        for (let i = 0; i < data.count; i++) {
+          items.push({
+            name: type.toUpperCase(),
+            img: data.img,
+            class: type,
+            weight: data.weight
+          });
+        }
+      }
+
+      shuffle(items);
+
+      // Удлиняем массив для прокрутки
+      const extended = [];
+      for (let i = 0; i < 20; i++) {
+        extended.push(...items);
+      }
+
+      extended.forEach(item => {
+        const el = document.createElement("div");
+        el.classList.add("item", item.class);
+        const img = document.createElement("img");
+        img.src = item.img;
+        el.appendChild(img);
+        spinner.appendChild(el);
+      });
+
+      return extended;
+    }
+
+    function weightedRandom(source) {
+      const weighted = [];
+      source.forEach(item => {
+        for (let i = 0; i < item.weight; i++) {
+          weighted.push(item);
+        }
+      });
+      return weighted[Math.floor(Math.random() * weighted.length)];
+    }
+
+     function spin() {
+       if (isSpinning) return;
+       isSpinning = true;
+       spinBtn.disabled = true;
+     
+       const allElements = Array.from(spinner.children);
+       const itemCount = allElements.length;
+     
+       // Убираем подсветку у всех элементов перед новым спином
+       allElements.forEach(el => el.classList.remove("highlight"));
+     
+       const target = weightedRandom(items);
+       const matching = allElements.filter(el => el.classList.contains(target.class));
+       const winningElement = matching[Math.floor(matching.length / 2)];
+       const winningIndex = allElements.indexOf(winningElement);
+     
+       const firstItem = document.querySelector(".item");
+       const style = getComputedStyle(firstItem);
+       const width = firstItem.offsetWidth;
+       const margin = parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+       itemWidth = width + margin;
+       
+       const offset = winningIndex * itemWidth - (spinnerWrapper.offsetWidth / 2) + (itemWidth / 2);
+       spinner.style.transition = "none";
+       spinner.style.transform = `translateX(0px)`;
+     
+       setTimeout(() => {
+         spinner.style.transition = "transform 4s cubic-bezier(0.2, 0.8, 0.2, 1)";
+         spinner.style.transform = `translateX(${-offset}px)`;
+       }, 50);
+     
+       setTimeout(() => {
+         winningElement.classList.add("highlight"); // Подсвечиваем победный элемент
+     
+         console.log("🎯 Выпало:", target.name);
+         isSpinning = false;
+         spinBtn.disabled = false;
+       }, 4100);
+     }
+
+    // инициализация
+    setupSpinner();
+    spinBtn.onclick = spin;
+  </script>
+</body>
+</html>
